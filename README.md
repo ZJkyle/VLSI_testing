@@ -1,6 +1,3 @@
-以下是整理後的 README 文件，以 Markdown 語法呈現：
-
-```markdown
 # ATPG Tool Usage and Structure
 
 ## 使用方式
