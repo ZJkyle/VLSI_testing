@@ -89,6 +89,7 @@ class CIRCUIT
         void Check_Levelization();
         void SetMaxLevel();
         void SetupIO_ID();
+        void printINFO();
 
         //defined in sim.cc
         void SetPPIZero(); //Initialize PPI state
