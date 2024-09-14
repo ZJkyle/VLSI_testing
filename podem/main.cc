@@ -38,7 +38,7 @@ int SetupOption(int argc, char ** argv)
     option.enroll("bt", GetLongOpt::NoValue,
             "set the backtrack limit", 0);
     // ass0
-    option.enroll("ass0", GetLongOpt::MandatoryValue, 
+    option.enroll("ass0", GetLongOpt::NoValue, 
     "run assignment 0 for the specified circuit", 0);
 
     int optind = option.parse(argc, argv);
