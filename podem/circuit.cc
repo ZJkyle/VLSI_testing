@@ -202,31 +202,56 @@ void CIRCUIT::printINFO()
     // number of DFF = PPI in here
     cout << "Number of flip-flops: "<< DFF <<endl;
     // Total number of signal nets:
-    // # of branch nets
-    // # of stem nets
-    // Avg # of fanouts of each gate
-    // int num_nets = 0, num_bran = 0, num_stem = 0;
-    // int temp=0, tempbr=0;
-    // float out = 0, avgout = 0;
-    // for(int i = 0; i < Circuit.No_Gate();i++){
-    //     cout << Circuit.Gate(i)-> GetName() << "'s func: " << Circuit.Gate(i)->GetFunction()<<endl;
-    //     if (Circuit.Gate(i)->No_Fanout() >= 2){
-    //         temp = Circuit.Gate(i)->No_Fanout() +1;
-    //         tempbr = Circuit.Gate(i)->No_Fanout();
-    //         num_stem += 1;
-    //     }
-    //     else{
-    //         temp = Circuit.Gate(i)->No_Fanout();
-    //         tempbr = 0;
-    //     }
-    //     num_bran += tempbr;
-    //     num_nets = num_nets + temp;
-    //     out += Circuit.Gate(i)->No_Fanout();
-    // }
+    int total_nets = 0;
 
-    // avgout = out / Circuit.No_Gate();
-    // cout <<  "Total number of signal nets: " <<  num_nets << endl;
-    // cout <<  "Number of branch nets: " << num_bran <<endl;
-    // cout <<  "Number of stem nets: " << num_stem <<endl;
-    // cout <<  "Average number of fanouts of each gate: "  << avgout <<endl ;
+    for(int i = 0; i < No_Gate(); i++) {
+        int fanout_count = Gate(i)->No_Fanout();
+        
+        // 如果 fanout > 1，則計算 stem net + branch nets
+        if(fanout_count > 1) {
+            total_nets += 1 + fanout_count; // 1 個 stem net，加上 fanout_count 個 branch nets
+        }
+        // 如果 fanout == 1，只計算 1 條 net
+        else if(fanout_count == 1) {
+            total_nets += 1;
+        }
+    }
+
+    cout << "Total number of signal nets: " << total_nets << endl;
+    // # of branch nets
+    int total_branch_nets = 0;
+    for(int i = 0; i < No_Gate(); i++) {
+        int fanout_count = Gate(i)->No_Fanout();
+        // 如果 fanout > 1，計算 branch nets
+        if(fanout_count > 1) {
+            total_branch_nets += fanout_count; 
+        }
+    }
+    cout << "Total number of branch nets: " << total_branch_nets << endl;    
+
+    // # of stem nets
+    int total_stem_nets = 0;
+
+    for(int i = 0; i < No_Gate(); i++) {
+        int fanout_count = Gate(i)->No_Fanout();
+        // 如果 fanout > 1，計算 stem net
+        if(fanout_count > 1) {
+            total_stem_nets += 1; // 每個有 fanout 的 gate 有 1 個 stem net
+        }
+    }
+
+    // Avg # of fanouts of each gate
+    int total_fanouts = 0; 
+    int total_gates = No_Gate(); 
+
+    for(int i = 0; i < total_gates; i++) {
+        int fanout_count = Gate(i)->No_Fanout();
+        total_fanouts += fanout_count; // 將每個 gate 的 fanout 累加
+    }
+
+    // 計算平均 fanout 數量
+    float average_fanouts = static_cast<float>(total_fanouts) / total_gates;
+    cout << "Total fanouts: "<<total_fanouts<<endl;
+    cout << "Total gates: "<<total_gates<<endl;
+    cout << "Average number of fanouts per gate: " << average_fanouts << endl;
 }
