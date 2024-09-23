@@ -18,6 +18,7 @@ GetLongOpt option;
 
 int SetupOption(int argc, char ** argv)
 {
+    // original functions
     option.usage("[options] input_circuit_file");
     option.enroll("help", GetLongOpt::NoValue,
             "print this help summary", 0);
@@ -39,8 +40,24 @@ int SetupOption(int argc, char ** argv)
             "set the backtrack limit", 0);
     // ass0
     option.enroll("ass0", GetLongOpt::NoValue, 
-    "run assignment 0 for the specified circuit", 0);
-
+            "Run assignment 0 for the specified circuit", 0);
+    // ass1
+    option.enroll("path", GetLongOpt::NoValue,
+            "List the possible paths from start to end", 0);
+    option.enroll("start",GetLongOpt::MandatoryValue,
+            "get the starting gate for the path", 0);
+    option.enroll("end",GetLongOpt::MandatoryValue,
+            "get the ending gate for the path", 0);    
+    // ass2
+    option.enroll("pattern", GetLongOpt::NoValue,
+            			"Generate random pattern", 0);
+    option.enroll("num",GetLongOpt::MandatoryValue,
+                                "specify the number of the generated pattern", 0);
+    option.enroll("unknown", GetLongOpt::NoValue,
+            			"Generate random pattern with unknown", 0);
+    option.enroll("mod_logicsim", GetLongOpt::NoValue,
+            			"use cpu instructions to compute AND, OR and NOT", 0);
+    // IO 
     int optind = option.parse(argc, argv);
     if ( optind < 1 ) { exit(0); }
     if ( option.retrieve("help") ) {
@@ -114,9 +131,53 @@ int main(int argc, char ** argv)
         }
         Circuit.TFAtpg();
     }
+    // Ass0: print circuit's infomation
     else if (option.retrieve("ass0")) {
         Circuit.printINFO();
+    }
+    // Ass1: find all path from start to end in circuit
+    else if (option.retrieve("path")){
+        // GetLongOpt::MandatoryValue would be const char * as defined
+        const char *startGatename = option.retrieve("start");
+        const char *endGatename = option.retrieve("end");
+        Circuit.findpath(startGatename, endGatename);
+    }
+    else if (option.retrieve("pattern")){
+        string circuitname = Circuit.GetName();
+        string outputfilename = "empty";
+        int num = 0;
 
+        // set parameters
+        if (option.retrieve("num")&&option.retrieve("output"))
+        {
+            num = atoi(option.retrieve("num"));
+            outputfilename = "./input/" + static_cast<string>(option.retrieve("output"));
+        }
+        else{
+            cerr << "Please Ensure you have -num [number of pattern] for your command" <<endl;
+            cerr << "Please Ensure you have -output [output file name] for your command" <<endl;
+            return 0;
+        }
+
+        // generating patterns
+        if(option.retrieve("unknown")){
+            cout << "Generating "<<circuitname<<"'s input pattern for "<<num<<" patterns (with unknown)"<<endl;
+            Circuit.GenerateRandomPatternWithUnknown(num, circuitname);
+        }
+        else{
+            cout << "Generating "<<circuitname<<"'s input pattern for "<<num<<" patterns (without unknown)"<<endl;
+            Circuit.GenerateRandomPattern(num, circuitname);
+        }
+
+        
+        // Read generated file
+        Circuit.InitPattern(outputfilename.c_str());
+        Circuit.LogicSimVectors();
+    }
+    // Ass1: modified logicsim
+    else if (option.retrieve("mod_logicsim")){
+        Circuit.InitPattern(option.retrieve("input"));
+        Circuit.ModLogicSimVectors();
     }
     else {
         Circuit.GenerateAllFaultList();

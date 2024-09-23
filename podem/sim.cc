@@ -1,6 +1,11 @@
 /* Logic Simulator
  * Last update: 2006/09/20 */
 #include <iostream>
+#include <fstream>
+#include <filesystem> // C++17 required
+#include <ctime>
+#include <cstdlib> 
+#include <random>
 #include "gate.h"
 #include "circuit.h"
 #include "ReadPattern.h"
@@ -9,7 +14,9 @@ using namespace std;
 
 extern GetLongOpt option;
 
-//do logic simulation for test patterns
+// Do logic simulation for test patterns
+// e.g. PI G1 PI G2 PI G3 PI G4 PI G5 
+//      01X11
 void CIRCUIT::LogicSimVectors()
 {
     cout << "Run logic simulation" << endl;
@@ -28,6 +35,7 @@ void CIRCUIT::LogicSim()
 {
     GATE* gptr;
     VALUE new_value;
+    // level 0 = PI, Maxlevel = PO (?)
     for (unsigned i = 0;i <= MaxLevel;i++) {
         while (!Queue[i].empty()) {
             gptr = Queue[i].front();
@@ -101,7 +109,7 @@ void CIRCUIT::InitializeQueue()
 //evaluate the output value of gate
 VALUE CIRCUIT::Evaluate(GATEPTR gptr)
 {
-    GATEFUNC fun(gptr->GetFunction());
+    GATEFUNC fun(gptr->GetFunction());  // G_AND, G_NAND, G_OR, G_NOR
     VALUE cv(CV[fun]); //controling value
     VALUE value(gptr->Fanin(0)->GetValue());
     switch (fun) {
@@ -192,3 +200,151 @@ void CIRCUIT::PrintIO()
     return;
 }
 
+void CIRCUIT::GenerateRandomPattern(int num, string circuitname){
+    unsigned i,j;
+    random_device rd;  
+    mt19937 gen(rd()); 
+    uniform_int_distribution<> dis(0, 1); 
+
+    filesystem::create_directories("./input/");
+
+    string filepath = "./input/" + circuitname + ".input";
+
+    ofstream outfile(filepath);
+
+    if (!outfile.is_open()) {
+        cerr << "Failed to open file: " << filepath << endl;
+        return;
+    }
+
+   
+    for (i = 0; i < No_PI(); ++i) {
+        outfile << "PI " << Gate(i)->GetName() << " ";
+    }
+    outfile << endl;
+    for(i = 0; i < num; i++){
+        for(j = 0; j < No_PI(); j++){
+            int random = dis(gen); 
+            outfile << random;
+        }
+        outfile << endl;
+    }
+    outfile.close();
+    cout << "Pattern saved to " << filepath << endl;
+}
+
+void CIRCUIT::GenerateRandomPatternWithUnknown(int num, string circuitname){
+    unsigned i,j;
+    random_device rd;  
+    mt19937 gen(rd()); 
+    uniform_int_distribution<> dis(0, 2); 
+
+    
+    filesystem::create_directories("./input/");
+
+    string filepath = "./input/" + circuitname + ".input";
+    
+    ofstream outfile(filepath);
+
+    if (!outfile.is_open()) {
+        cerr << "Failed to open file: " << filepath << endl;
+        return;
+    }
+
+    // write file
+    for (i = 0; i < No_PI(); ++i) {
+        outfile << "PI " << Gate(i)->GetName() << " ";
+    }
+    outfile << endl;
+    for(i = 0; i < num; i++){
+        for(j = 0; j < No_PI(); j++){
+            int random = dis(gen);
+            if(random == 2)
+                outfile <<'X';
+            else
+                outfile << random;
+        }
+        outfile << endl;
+    }
+    
+    outfile.close();
+    cout << "Pattern saved to " << filepath << endl;
+}
+
+void CIRCUIT::ModLogicSimVectors(){
+    cout << "Run Modified logic simulation" << endl;
+    //read test patterns
+    while (!Pattern.eof()) {
+        Pattern.ReadNextPattern();
+        SchedulePI();
+        ModLogicSim();
+        PrintIO();
+    }
+    return;
+}
+
+//do event-driven logic simulation
+void CIRCUIT::ModLogicSim()
+{
+    GATE* gptr;
+    VALUE new_value;
+    for (unsigned i = 0;i <= MaxLevel;i++) {
+        while (!Queue[i].empty()) {
+            gptr = Queue[i].front();
+            Queue[i].pop_front();
+            gptr->ResetFlag(SCHEDULED);
+            new_value = ModEvaluate(gptr);
+            if (new_value != gptr->GetValue()) {
+                gptr->SetValue(new_value);
+                ScheduleFanout(gptr);
+            }
+        }
+    }
+    return;
+}
+
+VALUE CIRCUIT::ModEvaluate(GATEPTR gptr)
+{
+    GATEFUNC fun(gptr->GetFunction());  // G_AND, G_NAND, G_OR, G_NOR
+    VALUE cv(CV[fun]); 
+    VALUE value = gptr->Fanin(0)->GetValue();
+
+    switch (fun) {
+        case G_AND:
+        case G_NAND:
+            for (unsigned i = 1; i < gptr->No_Fanin() && value != cv; ++i) {
+                VALUE fanin_value = gptr->Fanin(i)->GetValue();
+
+                if (value == X || fanin_value == X) {
+                    value = X;
+                    break;
+                }
+
+                value = static_cast<VALUE>(value & fanin_value);
+            }
+            break;
+
+        case G_OR:
+        case G_NOR:
+            for (unsigned i = 1; i < gptr->No_Fanin() && value != cv; ++i) {
+                VALUE fanin_value = gptr->Fanin(i)->GetValue();
+
+                if (value == X || fanin_value == X) {
+                    value = X;
+                    break;
+                }
+
+                value = static_cast<VALUE>(value | fanin_value);
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    if (gptr->Is_Inversion()) {
+        value = static_cast<VALUE>(~value & 0x01);  
+    }
+
+    return value;
+}

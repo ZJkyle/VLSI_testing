@@ -2,6 +2,8 @@
 //#include <alg.h>
 #include "circuit.h"
 #include "GetLongOpt.h"
+#include <unordered_set>
+
 using namespace std;
 
 extern GetLongOpt option;
@@ -255,3 +257,91 @@ void CIRCUIT::printINFO()
     cout << "Total gates: "<<total_gates<<endl;
     cout << "Average number of fanouts per gate: " << average_fanouts << endl;
 }
+
+void CIRCUIT::findpath(const char* startGatename, const char* endGatename){
+    // find start/end gate if exist
+    vector<GATE*>::iterator it; // PIlist/POlist defined as vector<GATE*>
+    GATE *start_gate = nullptr;
+    GATE *end_gate = nullptr;
+
+    for(it = PIlist.begin(); it!=PIlist.end(); ++it){
+        if((*it)->GetName() == startGatename){
+            start_gate = (*it); 
+            break;
+        }
+    }
+    if (start_gate == nullptr){
+        cerr << "Can't find the Start gate" << endl;
+    }
+
+    for(it = POlist.begin(); it!=POlist.end(); ++it){
+        if((*it)->GetName() == endGatename){
+            end_gate = (*it); 
+            break;
+        }
+    }
+    if (end_gate == nullptr){
+        cerr << "Can't find the End gate" << endl;
+    }
+    
+    // 使用 DFS 查找所有從起點到終點的路徑
+    vector<GATE*> path;
+    path.clear();
+    int path_count = 0;
+    dfs(start_gate, end_gate, path, path_count);
+
+    // 輸出結果
+    if (path_count == 0) {
+        cout << "No paths found from " << startGatename << " to " << endGatename << endl;
+    } else {
+        cout << "The paths from " << startGatename << " to " << endGatename << ": " << path_count << endl;
+    }
+
+}
+
+
+bool CIRCUIT::dfs(GATE* current, GATE* destination, vector<GATE*>& path, int& path_count) {
+    bool find_path = false;
+    int current_fanout_num;
+    path.push_back(current);
+    GATE *next;
+
+    // Find path = true
+    if (current == destination) {
+        printPath(path);
+        path_count++;
+        path.pop_back();
+        return true;
+    } 
+    
+    current_fanout_num = current->No_Fanout();
+    
+    for(int i =0; i < current_fanout_num; ++i){
+        bool temp;
+        next = current->Fanout(i);
+
+        if(next->getSearchState() != VISITED){
+            //path.push_back(next);
+            temp = dfs(next, destination, path, path_count);
+            if(find_path ==false){
+                find_path = temp;
+            }
+        }
+    }
+    
+    if(find_path == false){
+        current->SetSearchState(VISITED);
+    }
+    path.pop_back();
+
+    return find_path;
+}
+
+void CIRCUIT::printPath(vector<GATE*>& path) {
+    cout <<endl;
+    for (GATE* gate : path) {
+        cout << gate->GetName() << " ";
+    }
+    cout << endl;
+}
+

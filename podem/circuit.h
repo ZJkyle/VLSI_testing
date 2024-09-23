@@ -4,6 +4,7 @@
 #include "tfault.h"
 #include "ReadPattern.h"
 #include <stdlib.h>
+#include <unordered_set>
 
 typedef GATE* GATEPTR;
 
@@ -89,8 +90,14 @@ class CIRCUIT
         void Check_Levelization();
         void SetMaxLevel();
         void SetupIO_ID();
+            // defined for lab
         void printINFO();
-
+        void findpath(const char* startGatename, const char* endGatename);
+        bool dfs(GATE* current, GATE* destination, vector<GATE*>& path, int& path_count);
+        void printPath(vector<GATE*>& path);
+        
+        
+        
         //defined in sim.cc
         void SetPPIZero(); //Initialize PPI state
         void InitializeQueue();
@@ -101,6 +108,12 @@ class CIRCUIT
         void LogicSim();
         void PrintIO();
         VALUE Evaluate(GATEPTR gptr);
+            // defined for lab
+        void GenerateRandomPatternWithUnknown(int num, string circuitname);
+        void GenerateRandomPattern(int num, string circuitname);
+        void ModLogicSimVectors();
+        void ModLogicSim();
+        VALUE ModEvaluate(GATEPTR gptr);
 
         //defined in atpg.cc
         void GenerateAllFaultList();
@@ -120,6 +133,7 @@ class CIRCUIT
         GATEPTR FindPIAssignment(GATEPTR gptr, VALUE value);
         GATEPTR TestPossible(FAULT* fptr);
         void TraceDetectedStemFault(GATEPTR gptr, VALUE val);
+            // defined for lab
 
         //defined in fsim.cc
         void MarkOutputGate();
@@ -129,6 +143,7 @@ class CIRCUIT
         void FaultSimEvaluate(GATE* gptr);
         bool CheckFaultyGate(FAULT* fptr);
         void InjectFaultValue(GATEPTR gptr, unsigned idx,VALUE value);
+            // defined for lab
 
 	//defined in psim.cc for parallel logic simulation
 	void ParallelLogicSimVectors();
@@ -136,6 +151,7 @@ class CIRCUIT
 	void ParallelEvaluate(GATEPTR gptr);
 	void PrintParallelIOs(unsigned idx);
 	void ScheduleAllPIs();
+        // defined for lab
 
 	//defined in stfsim.cc for single pattern single transition-fault simulation
 	void GenerateAllTFaultList();
@@ -149,6 +165,7 @@ class CIRCUIT
         void PrintTransition();
         void PrintTransition_t();
         void PrintIO_t();
+            // defined for lab
 
 	//defined in tfatpg.cc for transition fault ATPG
 	void TFAtpg();
@@ -157,5 +174,6 @@ class CIRCUIT
 	GATEPTR FindPIAssignment_t(GATEPTR gptr, VALUE value);
 	GATEPTR FindEasiestControl_t(GATEPTR gptr);
 	GATEPTR FindHardestControl_t(GATEPTR gptr);
+        // defined for lab
 };
 #endif

@@ -23,6 +23,8 @@ class GATE
         //bitset<PatternNum> WireValue2; //use two values to simulate don't care case
         bitset<PatternNum> WireValue[2]; //one pair of WireValues (length defined by PatternNum).
         bitset<PatternNum> FaultFlag;
+        // ass1: label the visited gate
+        SEARCH_STATE searchstate;
     public:
         //Initialize GATE
         GATE(): Function(G_BAD), Level(0), Value(X), Value_t(X), Inversion(false) {
@@ -30,10 +32,13 @@ class GATE
             Output_list.reserve(4);
             Count[0] = (0);
             Count[1] = (0);
-	    WireValue[0].set();   //All parallel bitsets are set to X
-	    WireValue[1].reset();
+            WireValue[0].set();   //All parallel bitsets are set to X
+            WireValue[1].reset();
+        // enum SEARCH_STATE { UNVISITED, VISITED};
+            searchstate = UNVISITED;
         }
         ~GATE() {}
+        void SetSearchState(SEARCH_STATE state) {searchstate = state;}
         void SetName(string n){ Name = n;}
         void SetID(unsigned id){ ID = id;}
         void SetFunction(GATEFUNC f){ Function = f;}
@@ -49,6 +54,8 @@ class GATE
         void DecCount(unsigned i = 0) {Count[i]--;}
         void ResetCount(unsigned i = 0) {Count[i] = 0;}
         void ResetAllCount() {Count[0] = 0;Count[1] = 0;}
+        // ass1: get searchstate
+        SEARCH_STATE getSearchState() {return searchstate;}
         unsigned GetCount(unsigned i = 0) { return Count[i];}
         string GetName(){ return Name;}
         unsigned GetID(){ return ID;}
