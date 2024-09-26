@@ -22,5 +22,21 @@ class PATTERN
         {
             return (patterninput.eof());
         }
+        // Function to close patterninput file stream
+        void ClosePatternFile()
+        {
+            if (patterninput.is_open()) {
+                patterninput.close();
+                cout << "Pattern input file closed successfully." << endl;
+            } else {
+                cout << "Pattern input file was not open." << endl;
+            }
+        }
+        // Reset function to clear previous patterns
+        void ResetPattern()
+        {
+            inlist.clear();    // 清空輸入 pattern 的列表
+            no_pi_infile = 0;  // 重置計數器
+        }
 };
 #endif

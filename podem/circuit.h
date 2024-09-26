@@ -30,6 +30,8 @@ class CIRCUIT
         ListofGate GateStack;
         ListofGate PropagateTree;
         ListofGateIte QueueIte;
+        // Calculate Gate Eval times
+        unsigned int GateEvalCount;
 
     public:
         //Initialize netlist
@@ -39,6 +41,7 @@ class CIRCUIT
             POlist.reserve(512);
             PPIlist.reserve(2048);
             PPOlist.reserve(2048);
+            GateEvalCount = 0;
         }
         CIRCUIT(unsigned NO_GATE, unsigned NO_PI = 128, unsigned NO_PO = 512,
                 unsigned NO_PPI = 2048, unsigned NO_PPO = 2048) {
@@ -47,6 +50,7 @@ class CIRCUIT
             POlist.reserve(NO_PO);
             PPIlist.reserve(NO_PPI);
             PPOlist.reserve(NO_PPO);
+            GateEvalCount = 0;
         }
         ~CIRCUIT() {
             for (unsigned i = 0;i<Netlist.size();++i) { delete Netlist[i]; }
@@ -95,6 +99,7 @@ class CIRCUIT
         void findpath(const char* startGatename, const char* endGatename);
         bool dfs(GATE* current, GATE* destination, vector<GATE*>& path, int& path_count);
         void printPath(vector<GATE*>& path);
+        void printPattern();
         
         
         
@@ -114,6 +119,7 @@ class CIRCUIT
         void ModLogicSimVectors();
         void ModLogicSim();
         VALUE ModEvaluate(GATEPTR gptr);
+        void PackedSim();
 
         //defined in atpg.cc
         void GenerateAllFaultList();

@@ -57,6 +57,11 @@ int SetupOption(int argc, char ** argv)
             			"Generate random pattern with unknown", 0);
     option.enroll("mod_logicsim", GetLongOpt::NoValue,
             			"use cpu instructions to compute AND, OR and NOT", 0);
+    // ass3
+    option.enroll("packed_sim", GetLongOpt::NoValue,
+            			"pack (1, 4, 8, 16) patterns into a simulation run", 0);                            
+    option.enroll("simulator", GetLongOpt::MandatoryValue,
+            "Generate a compiled code simulator", 0);                        
     // IO 
     int optind = option.parse(argc, argv);
     if ( optind < 1 ) { exit(0); }
@@ -142,6 +147,7 @@ int main(int argc, char ** argv)
         const char *endGatename = option.retrieve("end");
         Circuit.findpath(startGatename, endGatename);
     }
+    // ASS2: generate random patterns and Logicsim
     else if (option.retrieve("pattern")){
         string circuitname = Circuit.GetName();
         string outputfilename = "empty";
@@ -174,10 +180,15 @@ int main(int argc, char ** argv)
         Circuit.InitPattern(outputfilename.c_str());
         Circuit.LogicSimVectors();
     }
-    // Ass1: modified logicsim
+    // Ass2: modified logicsim
     else if (option.retrieve("mod_logicsim")){
         Circuit.InitPattern(option.retrieve("input"));
         Circuit.ModLogicSimVectors();
+    }
+    // Ass3: Pack (1, 4, 8, 16) patterns in a simulation run
+    else if (option.retrieve("packed_sim")){
+        Circuit.PackedSim();
+        return 0;
     }
     else {
         Circuit.GenerateAllFaultList();

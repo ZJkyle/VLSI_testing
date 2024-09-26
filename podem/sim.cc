@@ -27,6 +27,8 @@ void CIRCUIT::LogicSimVectors()
         LogicSim();
         PrintIO();
     }
+    Pattern.ResetPattern();
+    Pattern.ClosePatternFile();
     return;
 }
 
@@ -109,8 +111,9 @@ void CIRCUIT::InitializeQueue()
 //evaluate the output value of gate
 VALUE CIRCUIT::Evaluate(GATEPTR gptr)
 {
+    GateEvalCount++;  // 每次評估時增加計數
     GATEFUNC fun(gptr->GetFunction());  // G_AND, G_NAND, G_OR, G_NOR
-    VALUE cv(CV[fun]); //controling value
+    VALUE cv(CV[fun]); //controlling value
     VALUE value(gptr->Fanin(0)->GetValue());
     switch (fun) {
         case G_AND:
@@ -156,6 +159,7 @@ void PATTERN::Initialize(char* InFileName, int no_pi, string TAG)
             exit( -1);
         }
     }
+    
     return;
 }
 
@@ -280,6 +284,8 @@ void CIRCUIT::ModLogicSimVectors(){
         ModLogicSim();
         PrintIO();
     }
+    Pattern.ResetPattern();
+    Pattern.ClosePatternFile();
     return;
 }
 
@@ -347,4 +353,26 @@ VALUE CIRCUIT::ModEvaluate(GATEPTR gptr)
     }
 
     return value;
+}   
+
+void CIRCUIT::PackedSim(){
+    string name = GetName();
+    string outputfilename = "empty";
+    
+    int nums[] = {1, 4, 8, 16};
+    
+    for (int num : nums) {
+        clock_t time_init, time_end;
+        time_init = clock();
+        outputfilename = "./input/" + name + ".input";
+    
+        cout << "Generating " << name << "'s input pattern for " << num << " patterns (with unknown)" << endl;
+        GenerateRandomPatternWithUnknown(num, name);
+        InitPattern(outputfilename.c_str());
+        LogicSimVectors();
+        time_end = clock();
+        cout << "total CPU time = " << double(time_end - time_init)/CLOCKS_PER_SEC << endl;
+        cout << endl;
+        cout<<"********************************************************"<<endl<<endl;
+    }
 }
