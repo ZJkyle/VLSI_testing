@@ -6,6 +6,8 @@
 #include <ctime>
 #include <cstdlib> 
 #include <random>
+#include <sys/types.h>
+#include <unistd.h>
 #include "gate.h"
 #include "circuit.h"
 #include "ReadPattern.h"
@@ -23,6 +25,7 @@ void CIRCUIT::LogicSimVectors()
     //read test patterns
     while (!Pattern.eof()) {
         Pattern.ReadNextPattern();
+        PatternCount ++;
         SchedulePI();
         LogicSim();
         PrintIO();
@@ -359,6 +362,8 @@ void CIRCUIT::PackedSim(){
     string name = GetName();
     string outputfilename = "empty";
     
+    int pid=(int) getpid();
+    char buf[1024];
     int nums[] = {1, 4, 8, 16};
     
     for (int num : nums) {
@@ -370,9 +375,15 @@ void CIRCUIT::PackedSim(){
         GenerateRandomPatternWithUnknown(num, name);
         InitPattern(outputfilename.c_str());
         LogicSimVectors();
+        printEvalResult();
         time_end = clock();
         cout << "total CPU time = " << double(time_end - time_init)/CLOCKS_PER_SEC << endl;
+        cout << "Memory: " << std::flush;
+        sprintf(buf, "cat /proc/%d/statm", pid);
+        system(buf);
         cout << endl;
+        PatternCount =0 ;
         cout<<"********************************************************"<<endl<<endl;
     }
 }
+

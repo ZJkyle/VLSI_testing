@@ -38,5 +38,7 @@ class PATTERN
             inlist.clear();    // 清空輸入 pattern 的列表
             no_pi_infile = 0;  // 重置計數器
         }
+        // VLSI-Testing lab3
+		vector<GATE*>* getInlistPtr() { return &inlist;}
 };
 #endif

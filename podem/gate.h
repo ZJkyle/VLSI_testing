@@ -56,6 +56,8 @@ class GATE
         void ResetAllCount() {Count[0] = 0;Count[1] = 0;}
         // ass1: get searchstate
         SEARCH_STATE getSearchState() {return searchstate;}
+        // VLSI-Testing lab3
+		bitset<PatternNum>* getWireValue() { return WireValue;}
         unsigned GetCount(unsigned i = 0) { return Count[i];}
         string GetName(){ return Name;}
         unsigned GetID(){ return ID;}

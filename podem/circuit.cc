@@ -346,14 +346,16 @@ void CIRCUIT::printPath(vector<GATE*>& path) {
 }
 
 // ass3
-void CIRCUIT::printStatResult()
-{
-    avg_eval_cnt_pattern = (double) evaluation_count / pattern_num;
+void CIRCUIT::printEvalResult()
+{       
+    double avg_eval_cnt_pattern = 0;
+    double percent_eval_cnt = 0;
+    // calculate evaluation count and pattern numbers
+    avg_eval_cnt_pattern = (double) GateEvalCount / PatternCount;
     percent_eval_cnt = (double) avg_eval_cnt_pattern / No_Gate() * 100;
-    cout << "Pattern count = " << pattern_num << endl;
+    cout << "Pattern count = " << PatternCount << endl;
     cout << "Gate count = " << No_Gate() << endl;
-    cout << "Evaluation count = " << evaluation_count << endl;
+    cout << "Evaluation count = " << GateEvalCount << endl;
     cout << "Average evaluations over patterns = " << avg_eval_cnt_pattern << endl;
-    cout << "Percentage of average evaluations over gates = "
-    << percent_eval_cnt << "%\n";
+    cout << "Percentage of average evaluations over gates = " << percent_eval_cnt << "%\n";
 }

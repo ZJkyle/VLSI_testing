@@ -190,6 +190,22 @@ int main(int argc, char ** argv)
         Circuit.PackedSim();
         return 0;
     }
+    // Ass3: Generate Compiled code simulator
+    else if(option.retrieve("simulator")){
+        string file_name = (string) option.retrieve("simulator");
+        string output_name;
+
+        string::size_type idx;
+        idx = file_name.find(".cc");
+        if (idx != string::npos) { output_name = file_name.substr(0,idx); }
+        output_name.append(".out");
+        Circuit.setOutputName(output_name);
+
+        Circuit.InitPattern(option.retrieve("input"));
+		Circuit.openSimFile(file_name);
+        Circuit.genCompiledCodeSimulator();
+        
+    }
     else {
         Circuit.GenerateAllFaultList();
         Circuit.SortFaninByLevel();

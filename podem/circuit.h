@@ -4,9 +4,16 @@
 #include "tfault.h"
 #include "ReadPattern.h"
 #include <stdlib.h>
+#include <cstring>
+#include <filesystem>
 #include <unordered_set>
 
+#define xstr(s) str(s)
+#define str(s) #s
+
 typedef GATE* GATEPTR;
+using namespace std;
+namespace fs = std::filesystem;
 
 class CIRCUIT
 {
@@ -32,6 +39,13 @@ class CIRCUIT
         ListofGateIte QueueIte;
         // Calculate Gate Eval times
         unsigned int GateEvalCount;
+        unsigned int PatternCount;
+        // Ass3 simulator
+		string input_name, output_name;
+        ofstream ofsHeader, ofsMain, ofsEva, ofsPrintIO;
+        ofstream ofs; 
+
+        
 
     public:
         //Initialize netlist
@@ -42,6 +56,7 @@ class CIRCUIT
             PPIlist.reserve(2048);
             PPOlist.reserve(2048);
             GateEvalCount = 0;
+            PatternCount = 0;
         }
         CIRCUIT(unsigned NO_GATE, unsigned NO_PI = 128, unsigned NO_PO = 512,
                 unsigned NO_PPI = 2048, unsigned NO_PPO = 2048) {
@@ -51,11 +66,22 @@ class CIRCUIT
             PPIlist.reserve(NO_PPI);
             PPOlist.reserve(NO_PPO);
             GateEvalCount = 0;
+            PatternCount = 0;
         }
         ~CIRCUIT() {
             for (unsigned i = 0;i<Netlist.size();++i) { delete Netlist[i]; }
             list<FAULT*>::iterator fite;
             for (fite = Flist.begin();fite!=Flist.end();++fite) { delete *fite; }
+            if(ofs.is_open())
+				ofs.close();
+            if(ofsHeader.is_open())
+				ofsHeader.close();
+			if(ofsMain.is_open())
+				ofsMain.close();
+			if(ofsEva.is_open())
+				ofsEva.close();
+			if(ofsPrintIO.is_open())
+				ofsPrintIO.close();
         }
 
         void AddGate(GATE* gptr) { Netlist.push_back(gptr); }
@@ -88,6 +114,28 @@ class CIRCUIT
             }
         }
 
+        void openSimFile(string file_name) {
+            const char* simdir = "sim";
+
+            // filesystem 
+            fs::create_directory(simdir);  
+
+            string file_path = string("./") + simdir + "/" + file_name;
+
+            ofs.open(file_path, ofstream::out | ofstream::trunc);
+            ofsHeader.open("./sim/header", ofstream::out | ofstream::trunc);
+            ofsMain.open("./sim/main", ofstream::out | ofstream::trunc);
+            ofsEva.open("./sim/evaluate", ofstream::out | ofstream::trunc);
+            ofsPrintIO.open("./sim/printIO", ofstream::out | ofstream::trunc);
+
+            // Check file
+            if (!ofs.is_open()) cout << "Cannot open output file!\n";
+            if (!ofsHeader.is_open()) cout << "Cannot open header!\n";
+            if (!ofsMain.is_open()) cout << "Cannot open main!\n";
+            if (!ofsEva.is_open()) cout << "Cannot open evaluate!\n";
+            if (!ofsPrintIO.is_open()) cout << "Cannot open printIO!\n";
+        }
+
         //defined in circuit.cc
         void Levelize();
         void FanoutList();
@@ -99,7 +147,8 @@ class CIRCUIT
         void findpath(const char* startGatename, const char* endGatename);
         bool dfs(GATE* current, GATE* destination, vector<GATE*>& path, int& path_count);
         void printPath(vector<GATE*>& path);
-        void printPattern();
+        void printEvalResult();
+        
         
         
         
@@ -158,6 +207,26 @@ class CIRCUIT
 	void PrintParallelIOs(unsigned idx);
 	void ScheduleAllPIs();
         // defined for lab
+    void GenerateCompileCode(string circitname);
+    unsigned int getEvaluationCount() {return GateEvalCount;}
+    // VLSI-Testing Lab3
+    void printStatResult();
+    void genCompiledCodeSimulator();
+    void ccsParallelLogicSim(bool flag);
+    void ccsParallelEvaluate(GATEPTR gptr, bool flag);
+    void ccsPrintParallelIOs(unsigned idx);
+    void genHeader();
+    void genMainBegin();
+    void genMainEnd();
+    void genEvaBegin();
+    void genEvaEnd();
+    void genPrintIOBegin();
+    void genPrintIOEnd();
+    void genIniPattern();
+    void combineFilesToOutput();
+    void setOutputName(string str) { output_name = str;}
+
+    
 
 	//defined in stfsim.cc for single pattern single transition-fault simulation
 	void GenerateAllTFaultList();
