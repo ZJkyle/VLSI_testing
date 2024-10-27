@@ -29,6 +29,7 @@ class CIRCUIT
         list<FAULT*> UFlist; //undetected fault list
         list<TFAULT*> TFlist; //collapsing fault list
         list<TFAULT*> UTFlist; //undetected fault list
+        list<FAULT*> BFlist; // bridging fault list
         unsigned MaxLevel;
         unsigned BackTrackLimit; //backtrack limit for Podem
         typedef list<GATE*> ListofGate;
@@ -188,7 +189,9 @@ class CIRCUIT
         GATEPTR FindPIAssignment(GATEPTR gptr, VALUE value);
         GATEPTR TestPossible(FAULT* fptr);
         void TraceDetectedStemFault(GATEPTR gptr, VALUE val);
-            // defined for lab
+        // defined for lab
+        void BridgingFaultList();
+        void CheckpointFaultList(); 
 
         //defined in fsim.cc
         void MarkOutputGate();

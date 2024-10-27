@@ -17,7 +17,8 @@ void CIRCUIT::GenerateAllFaultList()
     GATEPTR gptr, fanout;
     FAULT *fptr;
     for (i = 0;i<No_Gate();++i) {
-        gptr = Netlist[i]; fun = gptr->GetFunction();
+        gptr = Netlist[i]; 
+        fun = gptr->GetFunction();
         if (fun == G_PO) { continue; } //skip PO
         //add stem stuck-at 0 fault to Flist
         fptr = new FAULT(gptr, gptr, S0);
@@ -591,4 +592,101 @@ void CIRCUIT::TraceDetectedStemFault(GATEPTR gptr, VALUE val)
     if (gptr->No_Fanout() > 1) { return; }
     TraceDetectedStemFault(gptr->Fanout(0), val);
     return;
+}
+
+//generate stuck-at fault list using checkpoint theorem
+void CIRCUIT::CheckpointFaultList()
+{
+    cout << "Generate stuck-at fault list using checkpoint theorem." << endl;
+    // PIset
+    std::unordered_set<GATEPTR> pi_set(PIlist.begin(), PIlist.end());
+
+    GATEPTR gptr, fanout;
+    FAULT *fptr;
+
+    // PI stuck at fault
+    for (unsigned int z = 0; z < No_PI(); ++z) {
+        gptr = PIlist[z];
+        // s.a.0
+        fptr = new FAULT(gptr, gptr, S0);
+        Flist.push_front(fptr);
+        // s.a.1
+        fptr = new FAULT(gptr, gptr, S1);
+        Flist.push_front(fptr);
+    }
+
+    // branches stuck at fault
+    for (unsigned int i = 0; i < No_Gate(); ++i) {
+        gptr = Netlist[i];
+
+        // gate = pi
+        if (pi_set.find(gptr) != pi_set.end()) {
+            continue;
+        }
+
+        // no branch
+        if (gptr->No_Fanout() == 1) {
+            continue;
+        }
+
+        // branch
+        for (unsigned int j = 0; j < gptr->No_Fanout(); ++j) {
+            fanout = gptr->Fanout(j);
+            // s.a.0
+            fptr = new FAULT(gptr, fanout, S0);
+            fptr->SetBranch(true);
+            Flist.push_front(fptr);
+            // s.a.1
+            fptr = new FAULT(gptr, fanout, S1);
+            fptr->SetBranch(true);
+            Flist.push_front(fptr);
+        }
+    }
+    UFlist = Flist;
+
+    return;
+}
+
+void CIRCUIT::BridgingFaultList()
+{
+    cout << "Generate possible bridging faults list." << endl;
+    vector<GATE*> levellist;
+    GATEPTR gptr, ngptr;
+    FAULT *fptr;
+    string outputfilename;
+    if(option.retrieve("output")) {
+        outputfilename = std::string(option.retrieve("output"));
+    } else {
+        cerr << "Error: no output file is chosen." << endl;
+        exit(EXIT_FAILURE); // Terminates the program
+    }
+
+    
+    ofstream op;
+    op.open(outputfilename);        
+    op << "These are all possible bridging faults."<<endl;
+    // build level to gate mapping
+    vector<vector<GATE*>> level_to_gates(MaxLevel + 1);
+
+    for (int i = 0; i < No_Gate(); i++) {
+        int level = Gate(i)->GetLevel();
+        level_to_gates[level].push_back(Gate(i));
+    }
+
+    for (int j = 0; j <= MaxLevel; j++) {
+        vector<GATE*>& levellist = level_to_gates[j];
+        for (int i = 0; i < levellist.size() - 1; i++) {
+            gptr = levellist[i];
+            ngptr = levellist[i + 1];
+            fptr = new FAULT(gptr, ngptr, S0);
+            BFlist.push_front(fptr);
+            fptr = new FAULT(gptr, ngptr, S1);
+            BFlist.push_front(fptr);
+            op << "(" << gptr->GetName() << ", " << ngptr->GetName() << ", AND) when (" << gptr->GetName() << "=0, " << ngptr->GetName() << "=1)\n";
+            op << "(" << gptr->GetName() << ", " << ngptr->GetName() << ", OR) when (" << gptr->GetName() << "=1, " << ngptr->GetName() << "=0)\n";
+        }
+    }
+    UFlist = BFlist;
+    op.close();      
+    return ;
 }

@@ -61,7 +61,13 @@ int SetupOption(int argc, char ** argv)
     option.enroll("packed_sim", GetLongOpt::NoValue,
             			"pack (1, 4, 8, 16) patterns into a simulation run", 0);                            
     option.enroll("simulator", GetLongOpt::MandatoryValue,
-            "Generate a compiled code simulator", 0);                        
+            "Generate a compiled code simulator", 0);         
+    // ass4
+    option.enroll("check_point", GetLongOpt::NoValue,
+            			"Generate Fault list with checkpoint theorem", 0);             
+    option.enroll("bridging", GetLongOpt::NoValue,
+            			"Generate Fault list with bridging fault", 0);                                              
+                   
     // IO 
     int optind = option.parse(argc, argv);
     if ( optind < 1 ) { exit(0); }
@@ -205,6 +211,21 @@ int main(int argc, char ** argv)
 		Circuit.openSimFile(file_name);
         Circuit.genCompiledCodeSimulator();
         
+    }
+    // Ass4: Generate fault list with checkpoint throrem
+    else if (option.retrieve("check_point")) {
+        //generate all stuck-at fault list
+        Circuit.CheckpointFaultList();
+        Circuit.SortFaninByLevel();
+        Circuit.MarkOutputGate();
+        //stuck-at fualt ATPG
+        Circuit.Atpg();
+
+    }  
+    // Ass4: Generate fault list with checkpoint throrem
+    else if (option.retrieve("bridging")){
+        Circuit.BridgingFaultList();
+        return 0;
     }
     else {
         Circuit.GenerateAllFaultList();
