@@ -8,8 +8,9 @@
 #include <filesystem>
 #include <unordered_set>
 
-#define xstr(s) str(s)
-#define str(s) #s
+#define xstr(s) STR(s)
+#define STR(s) #s
+
 
 typedef GATE* GATEPTR;
 using namespace std;
@@ -102,6 +103,15 @@ class CIRCUIT
         unsigned No_PO() { return POlist.size(); }
         unsigned No_PPI() { return PPIlist.size(); }
         unsigned No_PPO() { return PPOlist.size(); }
+        GATEPTR GetGateByName(const std::string& name)
+        {
+            for (int i = 0; i < No_Gate(); i++) {
+                if (Gate(i)->GetName() == name) {
+                    return Gate(i);
+                }
+            }
+            return nullptr; // 未找到对应的门
+        }
 
         void InitPattern(const char *pattern) {
             Pattern.Initialize(const_cast<char *>(pattern), PIlist.size(), "PI");
@@ -170,6 +180,7 @@ class CIRCUIT
         void ModLogicSim();
         VALUE ModEvaluate(GATEPTR gptr);
         void PackedSim();
+        
 
         //defined in atpg.cc
         void GenerateAllFaultList();
@@ -192,6 +203,7 @@ class CIRCUIT
         // defined for lab
         void BridgingFaultList();
         void CheckpointFaultList(); 
+        void ReadBridgingFaultList();
 
         //defined in fsim.cc
         void MarkOutputGate();
@@ -201,7 +213,8 @@ class CIRCUIT
         void FaultSimEvaluate(GATE* gptr);
         bool CheckFaultyGate(FAULT* fptr);
         void InjectFaultValue(GATEPTR gptr, unsigned idx,VALUE value);
-            // defined for lab
+        // defined for lab
+        void BridgingFaultSimVectors();
 
 	//defined in psim.cc for parallel logic simulation
 	void ParallelLogicSimVectors();

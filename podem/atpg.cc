@@ -4,6 +4,8 @@
 #include "circuit.h"
 #include "GetLongOpt.h"
 #include <algorithm>   
+#include <regex>
+
 using namespace std;
 
 extern GetLongOpt option;
@@ -649,44 +651,70 @@ void CIRCUIT::CheckpointFaultList()
 
 void CIRCUIT::BridgingFaultList()
 {
-    cout << "Generate possible bridging faults list." << endl;
-    vector<GATE*> levellist;
-    GATEPTR gptr, ngptr;
-    FAULT *fptr;
-    string outputfilename;
-    if(option.retrieve("output")) {
-        outputfilename = std::string(option.retrieve("output"));
-    } else {
-        cerr << "Error: no output file is chosen." << endl;
-        exit(EXIT_FAILURE); // Terminates the program
-    }
-
-    
-    ofstream op;
-    op.open(outputfilename);        
-    op << "These are all possible bridging faults."<<endl;
-    // build level to gate mapping
-    vector<vector<GATE*>> level_to_gates(MaxLevel + 1);
-
-    for (int i = 0; i < No_Gate(); i++) {
-        int level = Gate(i)->GetLevel();
-        level_to_gates[level].push_back(Gate(i));
-    }
-
-    for (int j = 0; j <= MaxLevel; j++) {
-        vector<GATE*>& levellist = level_to_gates[j];
-        for (int i = 0; i < levellist.size() - 1; i++) {
-            gptr = levellist[i];
-            ngptr = levellist[i + 1];
-            fptr = new FAULT(gptr, ngptr, S0);
-            BFlist.push_front(fptr);
-            fptr = new FAULT(gptr, ngptr, S1);
-            BFlist.push_front(fptr);
-            op << "(" << gptr->GetName() << ", " << ngptr->GetName() << ", AND) when (" << gptr->GetName() << "=0, " << ngptr->GetName() << "=1)\n";
-            op << "(" << gptr->GetName() << ", " << ngptr->GetName() << ", OR) when (" << gptr->GetName() << "=1, " << ngptr->GetName() << "=0)\n";
+    if (option.retrieve("output")){
+        cout << "Generate possible bridging faults list." << endl;
+        vector<GATE*> levellist;
+        GATEPTR gptr, ngptr;
+        FAULT *fptr;
+        string outputfilename = GetName() + "_bridging.out";
+        ofstream op;
+        op.open(outputfilename);        
+        op << "These are all possible bridging faults."<<endl;
+        //generate bridging faults list
+        for(int j=0;j<=MaxLevel;j++){
+            // build a list containing gates of same level.
+            for (int i = 0;i<No_Gate();i++) {
+                if(Gate(i)->GetLevel() == j){
+                    levellist.push_back(Gate(i));
+                }
+            }
+            //store and cout the bridging faults based on levelist each time
+            for(int i=0;i<levellist.size();i++){
+                if(i == (levellist.size()-1)){ break; }
+                gptr = levellist[i]; ngptr = levellist[i+1];
+                if(gptr->GetLevel() == j){
+                    //add bridging fault to BFlist
+                    fptr = new FAULT(gptr, ngptr, S0);
+                    BFlist.push_front(fptr);          
+                    fptr = new FAULT(gptr, ngptr, S1);
+                    BFlist.push_front(fptr);                                
+                    //cout<<"("<<gptr->GetName()<<", "<<ngptr->GetName()<<", AND) when ("<<gptr->GetName()<<"=0, "<<ngptr->GetName()<<"=1)\n";
+                    //cout<<"("<<gptr->GetName()<<", "<<ngptr->GetName()<<", OR) when ("<<gptr->GetName()<<"=1, "<<ngptr->GetName()<<"=0)\n";
+                    op <<"("<<gptr->GetName()<<", "<<ngptr->GetName()<<", AND) when ("<<gptr->GetName()<<"=0, "<<ngptr->GetName()<<"=1)\n";
+                    op <<"("<<gptr->GetName()<<", "<<ngptr->GetName()<<", OR) when ("<<gptr->GetName()<<"=1, "<<ngptr->GetName()<<"=0)\n";                    
+                }            
+            }
         }
+        UFlist = BFlist;
+        op.close();        
+    }    
+    else{
+        cout << "Generate possible bridging faults list." << endl;
+        vector<GATE*> levellist;
+        GATEPTR gptr, ngptr ;
+        FAULT *fptr;
+        //generate bridging faults list
+        for(int j=0;j<=MaxLevel;j++){
+            // build a list containing gates of same level.
+            for (int i = 0;i<No_Gate();i++) {
+                if(Gate(i)->GetLevel() == j){
+                    levellist.push_back(Gate(i));
+                }
+            }
+            //store and cout the bridging faults based on levelist each time
+            for(int i=0;i<levellist.size();i++){
+                if(i == (levellist.size()-1)){ break; }
+                gptr = levellist[i]; ngptr = levellist[i+1];
+                if(gptr->GetLevel() == j){
+                    //add bridging fault to BFlist
+                    fptr = new FAULT(gptr, ngptr, S0);
+                    BFlist.push_front(fptr);          
+                    fptr = new FAULT(gptr, ngptr, S1);
+                    BFlist.push_front(fptr);                                
+                }            
+            }
+        }                     
+        UFlist = BFlist;         
     }
-    UFlist = BFlist;
-    op.close();      
-    return ;
+    return;
 }

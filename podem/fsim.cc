@@ -292,3 +292,60 @@ void CIRCUIT::MarkOutputGate()
     }
     return;
 }
+
+// fault simulation test patterns
+void CIRCUIT::BridgingFaultSimVectors()
+{
+    cout << "Run Bridging fault simulation" << endl;
+    unsigned pattern_num(0);
+    if(!Pattern.eof()){ // Readin the first vector
+        while(!Pattern.eof()){
+            ++pattern_num;
+            Pattern.ReadNextPattern();
+            //fault-free simulation
+            SchedulePI();
+            LogicSim();
+            //single pattern parallel fault simulation
+            FaultSim();
+        }
+    }
+    
+
+    //compute fault coverage
+    unsigned total_num(0);
+    unsigned undetected_num(0), detected_num(0);
+    unsigned eqv_undetected_num(0), eqv_detected_num(0);
+    FAULT* fptr;
+    list<FAULT*>::iterator fite;
+    for (fite = BFlist.begin();fite!=BFlist.end();++fite) {
+        fptr = *fite;
+        switch (fptr->GetStatus()) {
+            case DETECTED:
+                ++eqv_detected_num;
+                detected_num += fptr->GetEqvFaultNum();
+                break;
+            default:
+                ++eqv_undetected_num;
+                undetected_num += fptr->GetEqvFaultNum();
+                break;
+        }
+    }
+    total_num = detected_num + undetected_num;
+    cout.setf(ios::fixed);
+    cout.precision(2);
+    cout << "---------------------------------------" << endl;
+    cout << "Test pattern number = " << pattern_num << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Total fault number = " << total_num << endl;
+    cout << "Detected fault number = " << detected_num << endl;
+    cout << "Undetected fault number = " << undetected_num << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Equivalent fault number = " << BFlist.size() << endl;
+    cout << "Equivalent detected fault number = " << eqv_detected_num << endl; 
+    cout << "Equivalent undetected fault number = " << eqv_undetected_num << endl; 
+    cout << "---------------------------------------" << endl;
+    cout << "Fault Coverge = " << 100*detected_num/double(total_num) << "%" << endl;
+    cout << "Equivalent FC = " << 100*eqv_detected_num/double(BFlist.size()) << "%" << endl;
+    cout << "---------------------------------------" << endl;
+    return;
+}

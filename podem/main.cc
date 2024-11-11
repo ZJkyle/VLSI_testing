@@ -66,7 +66,9 @@ int SetupOption(int argc, char ** argv)
     option.enroll("check_point", GetLongOpt::NoValue,
             			"Generate Fault list with checkpoint theorem", 0);             
     option.enroll("bridging", GetLongOpt::NoValue,
-            			"Generate Fault list with bridging fault", 0);                                              
+            			"Generate Fault list with bridging fault", 0);         
+    option.enroll("bridging_fsim", GetLongOpt::NoValue,
+            			"Parallel simlulator for Stuck-at-fault.", 0);                                                                
                    
     // IO 
     int optind = option.parse(argc, argv);
@@ -225,8 +227,15 @@ int main(int argc, char ** argv)
     // Ass4: Generate fault list with checkpoint throrem
     else if (option.retrieve("bridging")){
         Circuit.BridgingFaultList();
-        return 0;
     }
+    // Ass5: Bridging fault simulation
+    else if (option.retrieve("bridging_fsim")){
+        Circuit.BridgingFaultList();
+        Circuit.SortFaninByLevel();
+        Circuit.MarkOutputGate();
+        Circuit.InitPattern(option.retrieve("input"));
+        Circuit.BridgingFaultSimVectors();   
+    }      
     else {
         Circuit.GenerateAllFaultList();
         Circuit.SortFaninByLevel();
@@ -235,6 +244,7 @@ int main(int argc, char ** argv)
             //stuck-at fault simulator
             Circuit.InitPattern(option.retrieve("input"));
             Circuit.FaultSimVectors();
+            cout<<"The result is based on PatternNum = "<<PatternNum<<endl;
         }
 
         else {
@@ -245,6 +255,7 @@ int main(int argc, char ** argv)
             Circuit.Atpg();
         }
     }
+    
     time_end = clock();
     cout << "total CPU time = " << double(time_end - time_init)/CLOCKS_PER_SEC << endl;
     cout << endl;
