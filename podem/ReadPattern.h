@@ -17,6 +17,7 @@ class PATTERN
         //Assign next input pattern to PI
         void ReadNextPattern();
         void ReadNextPattern_t();
+        void close();
 	void ReadNextPattern(unsigned idx);
         bool eof()
         {

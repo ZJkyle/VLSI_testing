@@ -36,7 +36,7 @@ int SetupOption(int argc, char ** argv)
             "set the input pattern file", 0);
     option.enroll("output", GetLongOpt::MandatoryValue,
             "set the output pattern file", 0);
-    option.enroll("bt", GetLongOpt::NoValue,
+    option.enroll("bt", GetLongOpt::OptionalValue,
             "set the backtrack limit", 0);
     // ass0
     option.enroll("ass0", GetLongOpt::NoValue, 
@@ -72,6 +72,8 @@ int SetupOption(int argc, char ** argv)
             			"Parallel simlulator for Stuck-at-fault.", 0);                                                                
 
     // ass6
+    option.enroll("ass6c", GetLongOpt::NoValue,
+            "run transition-fault ATPG on c17.bench and show steps with 2 faults.", 0);   
     option.enroll("check_point_fsim", GetLongOpt::NoValue,
             "run stuck-at check_point fault simulation", 0);
     option.enroll("random_pattern", GetLongOpt::NoValue,
@@ -243,51 +245,24 @@ int main(int argc, char ** argv)
         Circuit.InitPattern(option.retrieve("input"));
         Circuit.BridgingFaultSimVectors();   
     }
-//     else if (option.retrieve("check_point_fsim")) {
-//     //single pattern single transition-fault simulation
-//     Circuit.GenerateAllCPFaultListForFsim();
-            
-//     //Circuit.GenerateAllFaultList();
-//     Circuit.SortFaninByLevel();
-//     Circuit.MarkOutputGate();
-//     if (option.retrieve("fsim")) {
-//         //stuck-at fault simulator
-//         Circuit.InitPattern(option.retrieve("input"));
-//         Circuit.FaultSimVectors();
-//     }
-//     else {
-//         if (option.retrieve("bt")) {
-//             Circuit.SetBackTrackLimit(atoi(option.retrieve("bt")));
-//         }
-//         //stuck-at fualt ATPG
-//         Circuit.Atpg();
-//     }
-// }
-//     else if (option.retrieve("random_pattern")) {
-//     Circuit.GenerateAllFaultList();
-//     Circuit.SortFaninByLevel();
-//     Circuit.MarkOutputGate();
-//             string pattern_name = (string) option.retrieve("output");
-//             cout << "pattern name: " << pattern_name << endl;
-//             Circuit.openFile(pattern_name);
-//             Circuit.genRandomPattern(pattern_name, 1000);
-
-//             unsigned coverage = 0;
-//             int cnt = 0;
-
-//             while (coverage <= 90 && cnt < 1000) {
-//         //stuck-at fault simulator
-//         coverage = Circuit.FaultSimRandomPattern();
-                    
-//                     cout << "Random Pattern #" << ++cnt << " Coverage: " 
-//                             << coverage << "%\n";
-//     }
-//             if (option.retrieve("bt")) {
-//             Circuit.SetBackTrackLimit(atoi(option.retrieve("bt")));
-//             }
-//             //stuck-at fualt ATPG after Random Pattern
-//             Circuit.AtpgRandomPattern();
-//     }      
+    else if (option.retrieve("ass6c")){
+        // generate net17 stuck-at-0, n60 stuck-at-1 list
+        Circuit.GenerateSpeFaultList();
+        Circuit.SortFaninByLevel();
+        cout << "===================================================="<<endl;
+        Circuit.MarkOutputGate();
+        //Specified simulator
+        Circuit.AtpgWithTrace();
+    }    
+    else if (option.retrieve("random_pattern")) {
+        // VALUE no = Circuit.No_PI();
+        Circuit.GenerateAllFaultList();
+        Circuit.SortFaninByLevel();
+        Circuit.MarkOutputGate();
+        Circuit.Ass6d(); 
+        cout << "\n*************Run ATPG simulation**********\n" << endl;
+        Circuit.Atpg();
+    }    
     else {
         Circuit.GenerateAllFaultList();
         Circuit.SortFaninByLevel();
@@ -301,6 +276,7 @@ int main(int argc, char ** argv)
 
         else {
             if (option.retrieve("bt")) {
+                cout <<"Test"<<endl;
                 Circuit.SetBackTrackLimit(atoi(option.retrieve("bt")));
             }
             //stuck-at fualt ATPG

@@ -74,11 +74,12 @@ void CIRCUIT::Atpg()
 	    }
 	    OutputStrm << endl;
     }
+    cout<<"backtracklimit = "<<BackTrackLimit <<endl;
     for (fite = Flist.begin(); fite != Flist.end();++fite) {
         fptr = *fite;
         if (fptr->GetStatus() == DETECTED) { continue; }
         //run podem algorithm
-        status = Podem(fptr, total_backtrack_num);
+        status = Podem(fptr, BackTrackLimit);
         switch (status) {
             case TRUE:
                 fptr->SetStatus(DETECTED);
@@ -717,4 +718,362 @@ void CIRCUIT::BridgingFaultList()
         UFlist = BFlist;         
     }
     return;
+}
+
+//generate all stuck-at fault list
+void CIRCUIT::GenerateSpeFaultList()
+{
+    cout << "Generate Specified list" << endl;
+    string f1 = "net17";
+    string f2 = "n60";
+    register unsigned i, j;
+    GATEFUNC fun;
+    GATEPTR gptr, fanout;
+    FAULT *fptr;
+    for (i = 0;i<No_Gate();++i) {
+        gptr = Netlist[i]; 
+        fun = gptr->GetFunction();
+        //cout << "Name = "<<gptr->GetName()<< endl;
+        if (fun == G_PO) { continue; } //skip PO
+        else if(gptr->GetName()!=f1&&gptr->GetName()!=f2) { continue; }
+        if(gptr->GetName()==f1){
+            //add stem stuck-at 0 fault to Flist
+            fptr = new FAULT(gptr, gptr, S0);
+            Flist.push_front(fptr);
+            cout << "Add "<<gptr->GetName()<<" stuck at 0 to Fault list"<< endl;
+        }
+        else if(gptr->GetName()==f2){
+            //add stem stuck-at 1 fault to Flist
+            fptr = new FAULT(gptr, gptr, S1);
+            Flist.push_front(fptr);            
+            cout << "Add "<<gptr->GetName()<<" stuck at 1 to Fault list"<< endl;
+        }
+    } //end all gates
+    //copy Flist to undetected Flist (for fault simulation)
+    UFlist = Flist;  
+    return;
+}
+
+// PODEM ATPG with tracing (fault dropping)
+void CIRCUIT::AtpgWithTrace()
+{
+    cout << "Run stuck-at fault ATPG with Trace" << endl;
+    unsigned i, total_backtrack_num(0), pattern_num(0);
+    ATPG_STATUS status;
+    FAULT* fptr;
+    list<FAULT*>::iterator fite;
+    
+    // Prepare the output files
+    ofstream OutputStrm;
+    if (option.retrieve("output")){
+        OutputStrm.open((char*)option.retrieve("output"), ios::out);
+        if(!OutputStrm){
+            cout << "Unable to open output file: "
+                 << option.retrieve("output") << endl;
+            cout << "Unsaved output!\n";
+            exit(-1);
+        }
+    }
+
+    if (option.retrieve("output")){
+        for (i = 0; i < PIlist.size(); ++i) {
+            OutputStrm << "PI " << PIlist[i]->GetName() << " ";
+        }
+        OutputStrm << endl;
+    }
+
+    for (fite = Flist.begin(); fite != Flist.end(); ++fite) {
+        fptr = *fite;
+
+        // print fault in process
+        cout << "Processing fault at node " << fptr->GetOutputGate()->GetName()
+             << " with stuck-at value " << fptr->GetValue() << endl;
+
+        // Run PODEM algorithm with trace
+        status = PodemWithTrace(fptr, total_backtrack_num);
+
+        switch (status) {
+            case TRUE:
+                fptr->SetStatus(DETECTED);
+                ++pattern_num;
+                // Print test pattern
+                cout << "Test pattern found for fault at node "
+                     << fptr->GetOutputGate()->GetName() << ": ";
+                for (i = 0; i < PIlist.size(); ++i) {
+                    cout << PIlist[i]->GetName() << "=" << PIlist[i]->GetValue() << " ";
+                    ScheduleFanout(PIlist[i]); 
+                    if (option.retrieve("output")){ OutputStrm << PIlist[i]->GetValue(); }
+                }
+                cout << endl;
+                if (option.retrieve("output")){ OutputStrm << endl; }
+                for (i = PIlist.size(); i < Netlist.size(); ++i) { Netlist[i]->SetValue(X); }
+                LogicSim();
+                FaultSim();
+                break;
+            case CONFLICT:
+                fptr->SetStatus(REDUNDANT);
+                cout << "Fault at node " << fptr->GetOutputGate()->GetName()
+                     << " is redundant." << endl;
+                break;
+            case FALSE:
+                fptr->SetStatus(ABORT);
+                cout << "Abort processing fault at node "
+                     << fptr->GetOutputGate()->GetName() << endl;
+                break;
+        }
+        cout << "--------------------------------------------------------"<<endl;
+    } // end all faults
+
+}
+
+// Run PODEM for target fault with tracing
+ATPG_STATUS CIRCUIT::PodemWithTrace(FAULT* fptr, unsigned &total_backtrack_num)
+{
+    unsigned i, backtrack_num(0);
+    GATEPTR pi_gptr(0), decision_gptr(0);
+    ATPG_STATUS status;
+
+    // Set all values as unknown
+    for (i = 0; i < Netlist.size(); ++i) { Netlist[i]->SetValue(X); }
+
+    // Mark propagate paths
+    MarkPropagateTree(fptr->GetOutputGate());
+
+    // print fault activation
+    cout << "Activating fault at node " << fptr->GetOutputGate()->GetName()
+         << " with stuck-at value " << fptr->GetValue() << endl;
+
+    // Propagate fault-free value
+    status = SetUniqueImpliedValue(fptr);
+    switch (status) {
+        case TRUE:
+            LogicSim();
+            // Inject faulty value
+            if (FaultEvaluate(fptr)) {
+                // Forward implication
+                ScheduleFanout(fptr->GetOutputGate());
+                LogicSim();
+            }
+            // Check if the fault has propagated to PO
+            if (!CheckTest()) { status = FALSE; }
+            break;
+        case CONFLICT:
+            status = CONFLICT;
+            cout << "Conflict detected during unique path sensitization." << endl;
+            break;
+        case FALSE:
+            break;
+    }
+
+    while (backtrack_num < BackTrackLimit && status == FALSE) {
+        // Search possible PI decision
+        pi_gptr = TestPossible(fptr);
+        if (pi_gptr) { // Decision found
+            // print dicision
+            cout << "Decision made: Assigning value " << pi_gptr->GetValue()
+                 << " to PI node " << pi_gptr->GetName() << endl;
+
+            ScheduleFanout(pi_gptr);
+            // Push to decision tree
+            GateStack.push_back(pi_gptr);
+            decision_gptr = pi_gptr;
+        }
+        else { // Backtrack previous decision
+            cout << "No further decisions possible, backtracking..." << endl;
+            while (!GateStack.empty() && !pi_gptr) {
+                decision_gptr = GateStack.back();
+                // All decisions tried (1 and 0)
+                if (decision_gptr->GetFlag(ALL_ASSIGNED)) {
+                    cout << "All assignments tried for node " << decision_gptr->GetName()
+                         << ", undoing decision." << endl;
+                    decision_gptr->ResetFlag(ALL_ASSIGNED);
+                    decision_gptr->SetValue(X);
+                    ScheduleFanout(decision_gptr);
+                    // Remove decision from decision tree
+                    GateStack.pop_back();
+                }
+                // Inverse current decision value
+                else {
+                    decision_gptr->InverseValue();
+                    ScheduleFanout(decision_gptr);
+                    decision_gptr->SetFlag(ALL_ASSIGNED);
+                    ++backtrack_num;
+                    cout << "Backtracked: Assigning inverse value "
+                         << decision_gptr->GetValue() << " to node "
+                         << decision_gptr->GetName() << endl;
+                    pi_gptr = decision_gptr;
+                }
+            }
+            // No other decision
+            if (!pi_gptr) {
+                status = CONFLICT;
+                cout << "Backtracking failed, conflict encountered." << endl;
+            }
+        }
+        if (pi_gptr) {
+            LogicSim();
+            // Fault injection
+            if (FaultEvaluate(fptr)) {
+                // Forward implication
+                ScheduleFanout(fptr->GetOutputGate());
+                LogicSim();
+            }
+            if (CheckTest()) {
+                status = TRUE;
+                cout << "Fault effect has been propagated to PO, test pattern found." << endl;
+            }
+        }
+    } // end while loop
+
+    if (backtrack_num >= BackTrackLimit) {
+        cout << "Backtrack limit reached (" << BackTrackLimit << "), aborting." << endl;
+        status = FALSE;
+    }
+
+    // Clean ALL_ASSIGNED and MARKED flags
+    list<GATEPTR>::iterator gite;
+    for (gite = GateStack.begin(); gite != GateStack.end(); ++gite) {
+        (*gite)->ResetFlag(ALL_ASSIGNED);
+    }
+    for (gite = PropagateTree.begin(); gite != PropagateTree.end(); ++gite) {
+        (*gite)->ResetFlag(MARKED);
+    }
+
+    // Clear stacks
+    GateStack.clear();
+    PropagateTree.clear();
+    
+    // Assign true values to PIs
+    if (status == TRUE) {
+        cout << "Final test pattern: ";
+        for (i = 0; i < PIlist.size(); ++i) {
+            switch (PIlist[i]->GetValue()) {
+                case S1:
+                    cout << PIlist[i]->GetName() << "=1 ";
+                    break;
+                case S0:
+                    cout << PIlist[i]->GetName() << "=0 ";
+                    break;
+                case D:
+                    PIlist[i]->SetValue(S1);
+                    cout << PIlist[i]->GetName() << "=1 ";
+                    break;
+                case B:
+                    PIlist[i]->SetValue(S0);
+                    cout << PIlist[i]->GetName() << "=0 ";
+                    break;
+                case X:
+                    PIlist[i]->SetValue(VALUE(2.0 * rand()/(RAND_MAX + 1.0)));
+                    cout << PIlist[i]->GetName() << "=X ";
+                    break;
+                default:
+                    cerr << "Illegal value" << endl;
+                    break;
+            }
+        } // end for all PI
+        cout << endl;
+    } // end status == TRUE
+
+    total_backtrack_num += backtrack_num;
+    return status;
+}
+
+// Assignment 6D integrate random and PODEM
+void CIRCUIT::Ass6d()
+{
+    cout << "\n*************Run Random Pattern and Simulate**********\n" << endl;
+    int pat =0;
+    float coverage=0.0;   
+    unsigned i;
+    unsigned seed = static_cast<unsigned>(time(0)); // Use current time as the seed
+    srand(seed); // Set seed
+    //Prepare the output files
+    ofstream OutputStrm;
+
+    if (option.retrieve("output")){
+        OutputStrm.open((char*)option.retrieve("output"),ios::out);
+        if(!OutputStrm){
+              cout << "Unable to open output file: "
+                   << option.retrieve("output") << endl;
+              cout << "Unsaved output!\n";
+              exit(-1);
+        }
+    }
+    if (option.retrieve("output")){
+	    for (i = 0;i<PIlist.size();++i) {
+		OutputStrm << "PI " << PIlist[i]->GetName() << " ";
+	    }
+	    OutputStrm << endl;
+    }
+      
+    while(pat<999 && coverage<90){
+        string piname;      
+        // Generate one random pattern
+        for(i = 0;i<PIlist.size();++i){
+            int ra;
+            ra = (1 + (int)(10.0 * rand() / (RAND_MAX + 1.0)))%2 ;
+            if (option.retrieve("output")){ 
+                OutputStrm << ra;
+            }            
+        }        
+        OutputStrm << endl;
+        // OutputStrm.close();
+        // InitPattern
+        InitPattern(const_cast<char *>(option.retrieve("output")));
+        //Faultsimvectors
+        unsigned pattern_num(0);
+        if(!Pattern.eof()){ // Readin the first vector
+            while(!Pattern.eof()){
+                ++pattern_num;
+                Pattern.ReadNextPattern();
+                //fault-free simulation
+                SchedulePI();
+                LogicSim();
+                //single pattern parallel fault simulation
+                FaultSim();
+            }
+        }
+
+        //compute fault coverage
+        unsigned total_num(0);
+        unsigned undetected_num(0), detected_num(0);
+        unsigned eqv_undetected_num(0), eqv_detected_num(0);
+        FAULT* fptr;
+        list<FAULT*>::iterator fite;
+        for (fite = Flist.begin();fite!=Flist.end();++fite) {
+            fptr = *fite;
+            switch (fptr->GetStatus()) {
+                case DETECTED:
+                    ++eqv_detected_num;
+                    detected_num += fptr->GetEqvFaultNum();
+                    break;
+                default:
+                    ++eqv_undetected_num;
+                    undetected_num += fptr->GetEqvFaultNum();
+                    break;
+            }
+        }
+        total_num = detected_num + undetected_num;
+        coverage = 100*detected_num/double(total_num);   
+        pat += 1;     
+        Pattern.close();          
+        if(pat>999 || coverage>90){
+            cout.setf(ios::fixed);
+            cout.precision(2);
+            cout << "Test pattern number= " << pat << endl;                        
+            cout << "---------------------------------------" << endl;
+            cout << "Total fault number = " << total_num << endl;
+            cout << "Detected fault number = " << detected_num << endl;
+            cout << "Undetected fault number = " << undetected_num << endl;
+            cout << "---------------------------------------" << endl;
+            cout << "Equivalent fault number = " << Flist.size() << endl;
+            cout << "Equivalent detected fault number = " << eqv_detected_num << endl; 
+            cout << "Equivalent undetected fault number = " << eqv_undetected_num << endl; 
+            cout << "---------------------------------------" << endl;
+            cout << "Fault Coverge = " << 100*detected_num/double(total_num) << "%" << endl;
+            cout << "Equivalent FC = " << 100*eqv_detected_num/double(Flist.size()) << "%" << endl;
+            cout << "---------------------------------------" << endl;
+            cout << "coverage : "<<coverage<<endl ;   
+        }
+    }          
 }

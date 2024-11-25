@@ -140,6 +140,11 @@ VALUE CIRCUIT::Evaluate(GATEPTR gptr)
 
 extern GATE* NameToGate(string);
 
+void PATTERN::close()
+{
+    patterninput.close();
+}
+
 void PATTERN::Initialize(char* InFileName, int no_pi, string TAG)
 {
     patterninput.open(InFileName, ios::in);

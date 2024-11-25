@@ -204,6 +204,10 @@ class CIRCUIT
         void BridgingFaultList();
         void CheckpointFaultList(); 
         void ReadBridgingFaultList();
+        void GenerateSpeFaultList();
+        void AtpgWithTrace();
+        ATPG_STATUS PodemWithTrace(FAULT* fptr, unsigned &total_backtrack_num);
+        void Ass6d();
 
         //defined in fsim.cc
         void MarkOutputGate();
